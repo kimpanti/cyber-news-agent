@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from database import UserProfile, ProfileDB
-from tools import fetch_cyber_news
+from tools import fetch_cyber_news  # Imports our clean native function
 
 class AgentOrchestrator:
     def __init__(self):
@@ -25,16 +25,15 @@ class AgentOrchestrator:
             return profile
 
     def run(self, user_id: str, query: str, style_desc: str) -> list:
-        # 1. Update background user preference matrices
+        # 1. Sync background profile interest maps
         self.sync_memory(user_id, query, style_desc)
         
-        # FIX: Swapping .invoke() out for .run() lets the dict array pass through cleanly
-        # without LangChain forcing string serialization structures on it.
-        articles_data = fetch_cyber_news.run({"query": query})
+        # 2. Call the clean, native Python data utility directly (guaranteed to be a list object)
+        articles_data = fetch_cyber_news(query)
         
-        # Defensive fallback if the tool output hits formatting anomalies
-        if isinstance(articles_data, str):
-            return [{"title": "Data Format Alert", "source": "System Core", "summary": "The data stream required string serialization fallback. Please rerun the dashboard request.", "url": "#"}]
+        # Strict validation fallback to protect the LangChain invoke method downstream
+        if not isinstance(articles_data, list):
+            return [{"title": "System Diagnostic Failure", "source": "Engine Core", "summary": "Data stream failed list array integrity validation requirements.", "url": "#"}]
 
         system_prompt = (
             "You are a world-class Threat Intelligence Director compiling an elite intelligence briefing dashboard.\n\n"
@@ -47,20 +46,23 @@ class AgentOrchestrator:
 
         briefing_deck = []
         
-        # 3. Step across each dict data object safely
+        # 3. Step across each dictionary packet securely
         for art in articles_data:
             synthesis_prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
-                ("user", f"Source Article Headline: {art['title']}\nContext: {art['description']}")
+                ("user", f"Source Article Headline: {art.get('title', 'Alert')}\nContext: {art.get('description', 'Empty context data.')}")
             ])
             
-            ai_summary = self.model.invoke(synthesis_prompt).content
+            try:
+                ai_summary = self.model.invoke(synthesis_prompt).content
+            except Exception as e:
+                ai_summary = f"Failed to synthesize this specific article container record: {str(e)}"
             
             briefing_deck.append({
-                "title": art["title"],
-                "source": art["source"],
+                "title": art.get("title", "No Title Available"),
+                "source": art.get("source", "Unknown Source"),
                 "summary": ai_summary,
-                "url": art["url"]
+                "url": art.get("url", "#")
             })
             
         return briefing_deck
