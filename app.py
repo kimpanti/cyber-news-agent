@@ -4,25 +4,25 @@ from database import ProfileDB
 
 st.set_page_config(page_title="Cyber Intelligence Briefing Engine", page_icon="🔒", layout="wide")
 
-# Custom UI styling injection to build a clean dashboard card theme
+# FIX: Flat, sanitized string block to completely prevent hidden character TypeErrors
 st.markdown("""
-    <style>
-    .news-card {
-        background-color: #1e293b;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 15px;
-        border-left: 5px solid #3b82f6;
-    }
-    .source-badge {
-        background-color: #334155;
-        color: #94a3b8;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: bold;
-    }
-    </style>
+<style>
+.news-card {
+    background-color: #1e293b;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-left: 5px solid #3b82f6;
+}
+.source-badge {
+    background-color: #334155;
+    color: #94a3b8;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+</style>
 """, unsafe_allowed_html=True)
 
 st.title("🔒 Cyber, Privacy & AI Security Intelligence Feed")
@@ -74,23 +74,21 @@ with col_main:
             hidden_query = PERSONAS[selected_role]["keywords"]
             style_instruction = PERSONAS[selected_role]["desc"]
             
-            # This triggers your working engine and captures the structured dictionary array
             briefing_cards = orchestrator.run(user_id, hidden_query, style_instruction)
             
             st.markdown("### ⚡ Live Intelligence Curation Wire")
             
-            # The UI loop that picks up each item and paints it cleanly
             for idx, card in enumerate(briefing_cards, 1):
                 with st.container():
-                    st.markdown(f"#### {idx}. {card['title']}")
-                    st.markdown(f"<span class='source-badge'>🔍 Resource: {card['source']}</span>", unsafe_allowed_html=True)
+                    st.markdown(f"#### {idx}. {card.get('title', 'No Title Available')}")
+                    st.markdown(f"<span class='source-badge'>🔍 Resource: {card.get('source', 'Unknown Source')}</span>", unsafe_allowed_html=True)
                     st.write("") 
                     
-                    # Renders the beautiful role-based bulleted analysis from Groq
-                    st.info(card['summary'])
+                    display_text = card.get('summary') or card.get('description') or "No contextual brief available for this record."
+                    st.info(display_text)
                     
-                    # Renders your interactive verification link button cleanly underneath
-                    if card['url'] != "#":
-                        st.link_button(f"🔗 Verify Raw Resource Wire", card['url'])
+                    card_url = card.get('url', '#')
+                    if card_url != "#":
+                        st.link_button(f"🔗 Verify Raw Resource Wire", card_url)
                     
                     st.markdown("---")
