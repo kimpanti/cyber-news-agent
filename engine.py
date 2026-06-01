@@ -28,9 +28,14 @@ class AgentOrchestrator:
         # 1. Update background user preference matrices
         self.sync_memory(user_id, query, style_desc)
         
-        # 2. Invoke the tool directly (returns a clean Python list object now)
-        articles_data = fetch_cyber_news.invoke({"query": query})
+        # FIX: Swapping .invoke() out for .run() lets the dict array pass through cleanly
+        # without LangChain forcing string serialization structures on it.
+        articles_data = fetch_cyber_news.run({"query": query})
         
+        # Defensive fallback if the tool output hits formatting anomalies
+        if isinstance(articles_data, str):
+            return [{"title": "Data Format Alert", "source": "System Core", "summary": "The data stream required string serialization fallback. Please rerun the dashboard request.", "url": "#"}]
+
         system_prompt = (
             "You are a world-class Threat Intelligence Director compiling an elite intelligence briefing dashboard.\n\n"
             f"ROLE-BASED DESIGN CONSTRAINT: {style_desc}\n\n"
