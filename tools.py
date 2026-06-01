@@ -1,14 +1,13 @@
 import os
 import requests
-import json
 from langchain_core.tools import tool
 
 @tool
-def fetch_cyber_news(query: str) -> str:
-    """Queries the live web for the latest cybersecurity, privacy, and data governance news articles and returns structured data."""
+def fetch_cyber_news(query: str) -> list:
+    """Queries the live web for the latest cybersecurity, privacy, and data governance news articles and returns a structured list."""
     api_key = os.getenv("NEWS_API_KEY")
     if not api_key:
-        return json.dumps({"error": "Missing NEWS_API_KEY environment variable."})
+        return [{"title": "Authentication Error", "source": "System Core", "description": "Missing NEWS_API_KEY environment variable.", "url": "#"}]
     
     refined_query = f"({query}) AND (cybersecurity OR privacy OR 'data breach' OR vulnerability)"
     
@@ -30,13 +29,12 @@ def fetch_cyber_news(query: str) -> str:
         data = response.json()
         
         if data.get("status") != "ok":
-            return json.dumps({"error": data.get('message', 'Unknown API Error')})
+            return [{"title": "API Operational Warning", "source": "NewsAPI Portal", "description": data.get('message', 'Unknown API Error'), "url": "#"}]
             
         articles = data.get("articles", [])
         if not articles:
-            return json.dumps({"error": f"No high-relevancy updates found for target: '{query}'."})
+            return [{"title": "Zero Hits Returned", "source": "Search Index", "description": f"No high-relevancy updates found for target: '{query}'.", "url": "#"}]
             
-        # Compile structured metadata tracking packets
         payload_list = []
         for art in articles:
             payload_list.append({
@@ -46,7 +44,7 @@ def fetch_cyber_news(query: str) -> str:
                 "url": art.get("url", "#")
             })
             
-        return json.dumps(payload_list)
+        return payload_list
         
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return [{"title": "Network Exception Connection Failed", "source": "System Network Transceiver", "description": str(e), "url": "#"}]
