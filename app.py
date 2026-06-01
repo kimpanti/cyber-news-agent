@@ -2,38 +2,61 @@ import streamlit as st
 from engine import AgentOrchestrator
 from database import ProfileDB
 
-st.set_page_config(page_title="Cyber Intelligence News Agent", page_icon="🔒")
-st.title("🔒 Cyber, Privacy & AI News Agent")
-st.caption("Adaptive multi-persona news synthesis engine powered by LangChain & Llama 3 (via Groq)")
+st.set_page_config(page_title="Cyber Intelligence Briefing Engine", page_icon="🔒", layout="wide")
 
+st.title("🔒 Cyber, Privacy & AI Security Briefing Engine")
+st.caption("Automated threat intelligence and regulatory curation engine powered by LangChain & Groq")
+
+# Detailed persona and internal routing profiles
 PERSONAS = {
-    "👶 Explain Like I'm 5": "A five-year-old child. Eliminate all jargon. Use physical, real-world schoolyard analogies.",
-    "👔 Corporate Executive": "A busy C-Level executive. Bullet points only. Highlight strategic business risk, legal liability, and mitigation.",
-    "💻 Lead Security Engineer": "A highly technical staff engineer. Focus on underlying technical mechanics, CVE references, and architectural controls.",
-    "⚖️ Privacy Compliance Auditor": "A data privacy attorney. Focus heavily on regulatory violations, international frameworks (GDPR, CCPA), and governance metrics."
+    "👔 Chief Information Security Officer (CISO)": {
+        "desc": "A high-level executive briefing focused on systemic threat trends, material financial risk, vendor vulnerabilities, and business continuity metrics. Strict bullet points.",
+        "keywords": "ransomware OR 'zero-day' OR breach OR supply-chain OR 'cyber insurance'"
+    },
+    "💻 Lead Security Engineer": {
+        "desc": "A deep technical brief focused on exact exploit mechanics, CVE updates, architectural indicators of compromise (IOCs), and technical defensive mitigations.",
+        "keywords": "exploit OR CVE OR vulnerability OR 'remote code execution' OR patch"
+    },
+    "⚖️ Privacy & Compliance Director": {
+        "desc": "A governance briefing focusing heavily on regulatory enforcement actions, class-action privacy lawsuits, international framework violations (GDPR, CCPA, OAIC), and data handling compliance penalties.",
+        "keywords": "GDPR OR fine OR compliance OR lawsuit OR 'data privacy' OR regulation"
+    },
+    "🤖 AI Safety & Governance Officer": {
+        "desc": "A forward-looking assessment on AI vulnerabilities, shadow AI deployments, LLM data poisoning, model exfiltration risk, and emerging AI safety legal frameworks.",
+        "keywords": "'shadow AI' OR 'LLM vulnerability' OR 'AI regulation' OR NIST-AIMF OR deepfake"
+    }
 }
 
 user_id = "portfolio_user_demo"
 orchestrator = AgentOrchestrator()
 db = ProfileDB()
 
-# SIDEBAR: Displays the background user metadata tracking live
-with st.sidebar:
+# LAYOUT: Two clear columns for enterprise tracking
+col_sidebar, col_main = st.columns([1, 3])
+
+with col_sidebar:
+    st.subheader("📋 Executive Persona Selected")
+    selected_role = st.selectbox("Select Your Profile Role:", list(PERSONAS.keys()))
+    
+    st.markdown("---")
     st.subheader("Persistent Profile State")
     if st.button("Refresh Profile View"):
         st.rerun()
     profile = db.get_user(user_id)
     st.json(profile.model_dump())
 
-# MAIN PANEL: Search controls
-topic = st.text_input("Enter a technical topic or trend:", placeholder="e.g., Apple passkey deployment hurdles, zero-day data exfiltration")
-selected_label = st.selectbox("Select Explanation Persona Lens:", list(PERSONAS.keys()))
-
-if st.button("Fetch & Synthesize News", type="primary"):
-    if not topic.strip():
-        st.warning("Please enter an active search topic first.")
-    else:
-        with st.spinner("Executing secure retrieval tools and adjusting persona layers..."):
-            output_report = orchestrator.run(user_id, topic, PERSONAS[selected_label])
-            st.markdown("### Agent Synthesis Output")
+with col_main:
+    st.subheader(f"⚡ Live Intelligence Feed: Top 5 Things to Know")
+    st.write(f"*Currently curated for:* **{selected_role}**")
+    
+    if st.button("Generate Morning Briefing", type="primary"):
+        with st.spinner("Scanning live global threat feeds and synthesizing strategic report..."):
+            
+            # We fetch hidden optimized keywords tied directly to that role
+            hidden_query = PERSONAS[selected_role]["keywords"]
+            style_instruction = PERSONAS[selected_role]["desc"]
+            
+            output_report = orchestrator.run(user_id, hidden_query, style_instruction)
+            
+            st.markdown("### 📰 Your Curated Security Briefing")
             st.info(output_report)
