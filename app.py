@@ -4,27 +4,6 @@ from database import ProfileDB
 
 st.set_page_config(page_title="Cyber Intelligence Briefing Engine", page_icon="🔒", layout="wide")
 
-# FIX: Flat, sanitized string block to completely prevent hidden character TypeErrors
-st.markdown("""
-<style>
-.news-card {
-    background-color: #1e293b;
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 15px;
-    border-left: 5px solid #3b82f6;
-}
-.source-badge {
-    background-color: #334155;
-    color: #94a3b8;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 0.8rem;
-    font-weight: bold;
-}
-</style>
-""", unsafe_allowed_html=True)
-
 st.title("🔒 Cyber, Privacy & AI Security Intelligence Feed")
 st.caption("Automated threat intelligence and regulatory curation engine powered by LangChain & Groq")
 
@@ -57,7 +36,7 @@ with col_sidebar:
     st.subheader("📋 Profile Workspace Configuration")
     selected_role = st.selectbox("Select Target User Lens Profile:", list(PERSONAS.keys()))
     
-    st.markdown("---")
+    st.divider()
     st.subheader("Persistent Profile State")
     if st.button("Refresh Profile View"):
         st.rerun()
@@ -79,16 +58,18 @@ with col_main:
             st.markdown("### ⚡ Live Intelligence Curation Wire")
             
             for idx, card in enumerate(briefing_cards, 1):
-                with st.container():
-                    st.markdown(f"#### {idx}. {card.get('title', 'No Title Available')}")
-                    st.markdown(f"<span class='source-badge'>🔍 Resource: {card.get('source', 'Unknown Source')}</span>", unsafe_allowed_html=True)
-                    st.write("") 
-                    
-                    display_text = card.get('summary') or card.get('description') or "No contextual brief available for this record."
-                    st.info(display_text)
-                    
-                    card_url = card.get('url', '#')
-                    if card_url != "#":
-                        st.link_button(f"🔗 Verify Raw Resource Wire", card_url)
-                    
-                    st.markdown("---")
+                title = card.get('title', 'No Title Available')
+                source = card.get('source', 'Unknown Source')
+                
+                # Format using clean, standard Markdown elements
+                st.markdown(f"#### {idx}. {title}")
+                st.caption(f"🔍 Resource Source: **{source}**")
+                
+                display_text = card.get('summary') or card.get('description') or "No contextual brief available for this record."
+                st.info(display_text)
+                
+                card_url = card.get('url', '#')
+                if card_url != "#":
+                    st.link_button("🔗 Verify Raw Resource Wire", card_url)
+                
+                st.divider()
