@@ -1,3 +1,4 @@
+import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from database import UserProfile, ProfileDB
@@ -5,48 +6,63 @@ from tools import fetch_cyber_news
 
 class AgentOrchestrator:
     def __init__(self):
-        self.model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1) # Lower temp for high-accuracy analysis
+        self.model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.1)
         self.db = ProfileDB()
 
-    def sync_memory(self, user_id: str, current_query: str, current_style: str) -> UserProfile:
+    def sync_memory(self, user_id: str, query: str, style_desc: str) -> UserProfile:
         profile = self.db.get_user(user_id)
-        
         updater_prompt = ChatPromptTemplate.from_messages([
             ("system", "Analyze the briefing request. Update the JSON user profile tracking history. Append core keywords to tracking history."),
             ("user", "Profile: {profile}\nCuration Focus: {query}\nStyle Requirements: {style}")
         ])
-        
         structured_model = self.model.with_structured_output(UserProfile, method="function_calling")
-        
         try:
             updated = (updater_prompt | structured_model).invoke({
-                "profile": profile.model_dump_json(), "query": current_query, "style": current_style
+                "profile": profile.model_dump_json(), "query": query, "style": style_desc
             })
             self.db.save_user(updated)
             return updated
         except Exception:
             return profile
 
-    def run(self, user_id: str, query: str, style_desc: str) -> str:
-        # Update user profile tracking state in the background
+    def run(self, user_id: str, query: str, style_desc: str) -> list:
         self.sync_memory(user_id, query, style_desc)
         
-        # Pull live global threat/vulnerability datasets based on hidden query matrices
-        raw_news_payload = fetch_cyber_news.invoke({"query": query})
+        # Pull down the live news payload string package
+        raw_json_string = fetch_cyber_news.invoke({"query": query})
         
+        try:
+            articles_data = json.loads(raw_json_string)
+            if isinstance(articles_data, dict) and "error" in articles_data:
+                return [{"title": "Data Connection Timeout", "source": "System Engine", "summary": articles_data["error"], "url": "#"}]
+        except Exception:
+            return [{"title": "Parsing Exception", "source": "System Engine", "summary": "Failed to decode background payload parameters.", "url": "#"}]
+
         system_prompt = (
-            "You are a world-class Threat Intelligence Director compiling an elite morning briefing newsletter.\n\n"
-            "Your job is to read the raw industry news feed provided, pick out the most critical items, and format a strict 'Top 5 Things to Know' briefing.\n\n"
+            "You are a world-class Threat Intelligence Director compiling an elite intelligence briefing dashboard.\n\n"
             f"ROLE-BASED DESIGN CONSTRAINT: {style_desc}\n\n"
-            "CRITICAL FORMAT RULES:\n"
-            "1. Output EXACTLY 5 clear, separated items.\n"
-            "2. Ensure each item contains a bold title, a clear explanation of what happened, and a direct 'Impact/Action Item' statement tailored to the user's operational role.\n"
-            "3. Do not include conversational prefaces or closing pleasantries (e.g., 'Here is your briefing'). Start directly with item 1."
+            "CRITICAL EXECUTABLE RULES:\n"
+            "1. Read the provided article context carefully.\n"
+            "2. Synthesize a concise, high-impact overview explaining exactly what happened, and add a specific 'Impact/Action Item' customized to the requested role.\n"
+            "3. Do not include introductory text, numbers, markdown headings, or references to other articles. Output the synthesized text only."
         )
+
+        briefing_deck = []
         
-        synthesis_prompt = ChatPromptTemplate.from_messages([
-            ("system", system_prompt),
-            ("user", "Analyze and synthesize these raw data points into the Top 5 layout:\n\n{payload}")
-        ])
-        
-        return (synthesis_prompt | self.model).invoke({"payload": raw_news_payload}).content
+        # Synthesize each individual article packet on the fly
+        for art in articles_data:
+            synthesis_prompt = ChatPromptTemplate.from_messages([
+                ("system", system_prompt),
+                ("user", f"Source Article Headline: {art['title']}\nContext: {art['description']}")
+            ])
+            
+            ai_summary = self.model.invoke(synthesis_prompt).content
+            
+            briefing_deck.append({
+                "title": art["title"],
+                "source": art["source"],
+                "summary": ai_summary,
+                "url": art["url"]
+            })
+            
+        return briefing_deck
