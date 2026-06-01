@@ -1,4 +1,3 @@
-import json
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from database import UserProfile, ProfileDB
@@ -26,18 +25,12 @@ class AgentOrchestrator:
             return profile
 
     def run(self, user_id: str, query: str, style_desc: str) -> list:
+        # 1. Update background user preference matrices
         self.sync_memory(user_id, query, style_desc)
         
-        # Pull down the live news payload string package
-        raw_json_string = fetch_cyber_news.invoke({"query": query})
+        # 2. Invoke the tool directly (returns a clean Python list object now)
+        articles_data = fetch_cyber_news.invoke({"query": query})
         
-        try:
-            articles_data = json.loads(raw_json_string)
-            if isinstance(articles_data, dict) and "error" in articles_data:
-                return [{"title": "Data Connection Timeout", "source": "System Engine", "summary": articles_data["error"], "url": "#"}]
-        except Exception:
-            return [{"title": "Parsing Exception", "source": "System Engine", "summary": "Failed to decode background payload parameters.", "url": "#"}]
-
         system_prompt = (
             "You are a world-class Threat Intelligence Director compiling an elite intelligence briefing dashboard.\n\n"
             f"ROLE-BASED DESIGN CONSTRAINT: {style_desc}\n\n"
@@ -49,7 +42,7 @@ class AgentOrchestrator:
 
         briefing_deck = []
         
-        # Synthesize each individual article packet on the fly
+        # 3. Step across each dict data object safely
         for art in articles_data:
             synthesis_prompt = ChatPromptTemplate.from_messages([
                 ("system", system_prompt),
