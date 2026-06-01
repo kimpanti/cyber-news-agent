@@ -4,13 +4,33 @@ from database import ProfileDB
 
 st.set_page_config(page_title="Cyber Intelligence Briefing Engine", page_icon="🔒", layout="wide")
 
-st.title("🔒 Cyber, Privacy & AI Security Briefing Engine")
+# Custom UI styling injection to build a clean dashboard card theme
+st.markdown("""
+    <style>
+    .news-card {
+        background-color: #1e293b;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-left: 5px solid #3b82f6;
+    }
+    .source-badge {
+        background-color: #334155;
+        color: #94a3b8;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    </style>
+""", unsafe_allowed_html=True)
+
+st.title("🔒 Cyber, Privacy & AI Security Intelligence Feed")
 st.caption("Automated threat intelligence and regulatory curation engine powered by LangChain & Groq")
 
-# Detailed persona and internal routing profiles
 PERSONAS = {
     "👔 Chief Information Security Officer (CISO)": {
-        "desc": "A high-level executive briefing focused on systemic threat trends, material financial risk, vendor vulnerabilities, and business continuity metrics. Strict bullet points.",
+        "desc": "A high-level executive briefing focused on systemic threat trends, material financial risk, vendor vulnerabilities, and business continuity metrics. Bold statements only.",
         "keywords": "ransomware OR 'zero-day' OR breach OR supply-chain OR 'cyber insurance'"
     },
     "💻 Lead Security Engineer": {
@@ -31,12 +51,11 @@ user_id = "portfolio_user_demo"
 orchestrator = AgentOrchestrator()
 db = ProfileDB()
 
-# LAYOUT: Two clear columns for enterprise tracking
-col_sidebar, col_main = st.columns([1, 3])
+col_sidebar, col_main = st.columns([1, 2.5])
 
 with col_sidebar:
-    st.subheader("📋 Executive Persona Selected")
-    selected_role = st.selectbox("Select Your Profile Role:", list(PERSONAS.keys()))
+    st.subheader("📋 Profile Workspace Configuration")
+    selected_role = st.selectbox("Select Target User Lens Profile:", list(PERSONAS.keys()))
     
     st.markdown("---")
     st.subheader("Persistent Profile State")
@@ -46,17 +65,32 @@ with col_sidebar:
     st.json(profile.model_dump())
 
 with col_main:
-    st.subheader(f"⚡ Live Intelligence Feed: Top 5 Things to Know")
-    st.write(f"*Currently curated for:* **{selected_role}**")
+    st.subheader("📰 Live Threat Intel Feed: Top 5 Things to Know")
+    st.write(f"Tailored for: **{selected_role}**")
     
-    if st.button("Generate Morning Briefing", type="primary"):
-        with st.spinner("Scanning live global threat feeds and synthesizing strategic report..."):
+    if st.button("Generate Morning Intelligence Briefing", type="primary"):
+        with st.spinner("Scanning global threat feeds and parsing metadata records..."):
             
-            # We fetch hidden optimized keywords tied directly to that role
             hidden_query = PERSONAS[selected_role]["keywords"]
             style_instruction = PERSONAS[selected_role]["desc"]
             
-            output_report = orchestrator.run(user_id, hidden_query, style_instruction)
+            # This triggers your working engine and captures the structured dictionary array
+            briefing_cards = orchestrator.run(user_id, hidden_query, style_instruction)
             
-            st.markdown("### 📰 Your Curated Security Briefing")
-            st.info(output_report)
+            st.markdown("### ⚡ Live Intelligence Curation Wire")
+            
+            # The UI loop that picks up each item and paints it cleanly
+            for idx, card in enumerate(briefing_cards, 1):
+                with st.container():
+                    st.markdown(f"#### {idx}. {card['title']}")
+                    st.markdown(f"<span class='source-badge'>🔍 Resource: {card['source']}</span>", unsafe_allowed_html=True)
+                    st.write("") 
+                    
+                    # Renders the beautiful role-based bulleted analysis from Groq
+                    st.info(card['summary'])
+                    
+                    # Renders your interactive verification link button cleanly underneath
+                    if card['url'] != "#":
+                        st.link_button(f"🔗 Verify Raw Resource Wire", card['url'])
+                    
+                    st.markdown("---")
