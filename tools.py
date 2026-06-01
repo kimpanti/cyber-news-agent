@@ -10,11 +10,19 @@ def fetch_cyber_news(query: str) -> str:
         return "Error: Missing NEWS_API_KEY environment variable."
     
     # We restrict the keywords programmatically to lock focus onto security/privacy domains
-    refined_query = f"({query}) AND (cybersecurity OR privacy OR 'AI governance' OR breach)"
+    refined_query = f"({query}) AND (cybersecurity OR privacy OR 'data breach' OR 'security vulnerability')"
     
-    url = f"https://newsapi.org/v2/everything?q={refined_query}&sortBy=publishedAt&pageSize=5"
+    # RELEVANCY FIXES: 
+    # 1. We change sortBy to 'relevancy' instead of 'publishedAt'
+    # 2. We add searchIn='title,description' to ensure the topic is the actual focus of the article
+    url = (
+        f"https://newsapi.org/v2/everything?q={refined_query}"
+        f"&searchIn=title,description"
+        f"&sortBy=relevancy"
+        f"&language=en"
+        f"&pageSize=5"
+    )
     
-    # FIX: Adding browser headers tricks NewsAPI into treating the cloud server like a local machine
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Authorization": f"Bearer {api_key}"
@@ -29,9 +37,8 @@ def fetch_cyber_news(query: str) -> str:
             
         articles = data.get("articles", [])
         if not articles:
-            return f"No active news updates located matching the industry query target: '{query}'."
+            return f"No highly relevant news updates located matching the industry query target: '{query}'."
             
-        # Parse down the raw metadata feed into a clean string layout for the LLM
         payload_summary = []
         for idx, art in enumerate(articles, 1):
             title = art.get("title", "No Title Available")
