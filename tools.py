@@ -1,20 +1,17 @@
 import os
 import requests
+import json
 from langchain_core.tools import tool
 
 @tool
 def fetch_cyber_news(query: str) -> str:
-    """Queries the live web for the latest cybersecurity, privacy, and data governance news articles."""
+    """Queries the live web for the latest cybersecurity, privacy, and data governance news articles and returns structured data."""
     api_key = os.getenv("NEWS_API_KEY")
     if not api_key:
-        return "Error: Missing NEWS_API_KEY environment variable."
+        return json.dumps({"error": "Missing NEWS_API_KEY environment variable."})
     
-    # We restrict the keywords programmatically to lock focus onto security/privacy domains
-    refined_query = f"({query}) AND (cybersecurity OR privacy OR 'data breach' OR 'security vulnerability')"
+    refined_query = f"({query}) AND (cybersecurity OR privacy OR 'data breach' OR vulnerability)"
     
-    # RELEVANCY FIXES: 
-    # 1. We change sortBy to 'relevancy' instead of 'publishedAt'
-    # 2. We add searchIn='title,description' to ensure the topic is the actual focus of the article
     url = (
         f"https://newsapi.org/v2/everything?q={refined_query}"
         f"&searchIn=title,description"
@@ -33,20 +30,23 @@ def fetch_cyber_news(query: str) -> str:
         data = response.json()
         
         if data.get("status") != "ok":
-            return f"Failed to fetch news feed: {data.get('message', 'Unknown API Error')}"
+            return json.dumps({"error": data.get('message', 'Unknown API Error')})
             
         articles = data.get("articles", [])
         if not articles:
-            return f"No highly relevant news updates located matching the industry query target: '{query}'."
+            return json.dumps({"error": f"No high-relevancy updates found for target: '{query}'."})
             
-        payload_summary = []
-        for idx, art in enumerate(articles, 1):
-            title = art.get("title", "No Title Available")
-            desc = art.get("description", "No Context Snippet Available")
-            source = art.get("source", {}).get("name", "Unknown Source")
-            payload_summary.append(f"[{idx}] {title}\nSource: {source}\nContext: {desc}\n")
+        # Compile structured metadata tracking packets
+        payload_list = []
+        for art in articles:
+            payload_list.append({
+                "title": art.get("title", "No Title Available"),
+                "description": art.get("description", "No Context Snippet Available"),
+                "source": art.get("source", {}).get("name", "Unknown Source"),
+                "url": art.get("url", "#")
+            })
             
-        return "\n---\n".join(payload_summary)
+        return json.dumps(payload_list)
         
     except Exception as e:
-        return f"An operational exception occurred during network retrieval: {str(e)}"
+        return json.dumps({"error": str(e)})
