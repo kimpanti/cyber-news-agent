@@ -1,7 +1,7 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_groq import ChatGroq
 from database import UserProfile, ProfileDB
-from tools import fetch_cyber_news  # Imports our clean native function
+from tools import fetch_cyber_news
 
 class AgentOrchestrator:
     def __init__(self):
@@ -16,6 +16,7 @@ class AgentOrchestrator:
         ])
         structured_model = self.model.with_structured_output(UserProfile, method="function_calling")
         try:
+            # Using standard LCEL piping here to prevent type evaluation crashes
             updated = (updater_prompt | structured_model).invoke({
                 "profile": profile.model_dump_json(), "query": query, "style": style_desc
             })
@@ -28,10 +29,9 @@ class AgentOrchestrator:
         # 1. Sync background profile interest maps
         self.sync_memory(user_id, query, style_desc)
         
-        # 2. Call the clean, native Python data utility directly (guaranteed to be a list object)
+        # 2. Call the clean, native Python data utility directly
         articles_data = fetch_cyber_news(query)
         
-        # Strict validation fallback to protect the LangChain invoke method downstream
         if not isinstance(articles_data, list):
             return [{"title": "System Diagnostic Failure", "source": "Engine Core", "summary": "Data stream failed list array integrity validation requirements.", "url": "#"}]
 
@@ -54,7 +54,10 @@ class AgentOrchestrator:
             ])
             
             try:
-                ai_summary = self.model.invoke(synthesis_prompt).content
+                # FIX: We now use LangChain's native chain piping (prompt | model)
+                # to guarantee the inputs format perfectly before hitting Groq's servers.
+                chain = synthesis_prompt | self.model
+                ai_summary = chain.invoke({}).content
             except Exception as e:
                 ai_summary = f"Failed to synthesize this specific article container record: {str(e)}"
             
