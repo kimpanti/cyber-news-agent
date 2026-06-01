@@ -1,13 +1,13 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq  # Swapped from langchain_openai
+from langchain_groq import ChatGroq
 from database import UserProfile, ProfileDB
 from tools import fetch_cyber_news
 import os
 
 class AgentOrchestrator:
     def __init__(self):
-        # We use Llama 3 on Groq which is completely free and supports structured outputs
-        self.model = ChatGroq(model="llama3-8b-8192", temperature=0.2)
+        # We switch to a model optimized for complex tool structures and pipeline logic
+        self.model = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.2)
         self.db = ProfileDB()
 
     def sync_memory(self, user_id: str, current_query: str, current_style: str) -> UserProfile:
@@ -18,12 +18,18 @@ class AgentOrchestrator:
             ("user", "Profile: {profile}\nQuery: {query}\nSelected Style: {style}")
         ])
         
-        structured_model = self.model.with_structured_output(UserProfile)
-        updated = (updater_prompt | structured_model).invoke({
-            "profile": profile.model_dump_json(), "query": current_query, "style": current_style
-        })
-        self.db.save_user(updated)
-        return updated
+        # Explicitly setting method to function_calling bypasses the native 400 Bad Request quirks
+        structured_model = self.model.with_structured_output(UserProfile, method="function_calling")
+        
+        try:
+            updated = (updater_prompt | structured_model).invoke({
+                "profile": profile.model_dump_json(), "query": current_query, "style": current_style
+            })
+            self.db.save_user(updated)
+            return updated
+        except Exception:
+            # Safe fallback if an API hiccup happens during profiling sequence
+            return profile
 
     def run(self, user_id: str, query: str, style_desc: str) -> str:
         self.sync_memory(user_id, query, style_desc)
